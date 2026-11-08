@@ -67,18 +67,17 @@ def futo_nezet():
     lista = current_state["lista"]
     utolso = current_state["utolso_darab"]
     
-    st.title("🏭 Vasalósor - Aktuális Sorrend")
+    st.title("🏭 Vasalósor Vezérlő")
 
     if not lista:
         st.warning("Nincs aktív feladat.")
         return
 
     ceg_opciok = [f"{item['ceg']} {item['textil']}" for item in lista]
-    kovetkezo_idx = (idx + 1) % len(lista)
 
-    # --- ZÖLD KERETES DOBOZ (Aktuális munka) ---
+    # --- ZÖLD KERETES DOBOZ (Csak az Aktuális munka) ---
     with st.container(border=True):
-        st.markdown('<p style="color: #28a745; font-size: 20px; font-weight: bold; margin: 0;">🟢 AKTUÁLIS MUNKA:</p>', unsafe_allow_html=True)
+        st.markdown('<p style="color: #28a745; font-size: 22px; font-weight: bold; margin: 0;">🟢 AKTUÁLIS MUNKA:</p>', unsafe_allow_html=True)
         valasztott_aktualis_str = st.selectbox(
             "Aktuális", 
             ceg_opciok, 
@@ -87,26 +86,10 @@ def futo_nezet():
             label_visibility="collapsed"
         )
     
+    # Ha bárhol elforgatják/váltják a menüben, azonnal mentődik
     uj_idx = ceg_opciok.index(valasztott_aktualis_str)
     if uj_idx != idx:
         current_state["index"] = uj_idx
-        save_state(current_state)
-        st.rerun()
-
-    # --- PIROS KERETES DOBOZ (Következő munka) ---
-    with st.container(border=True):
-        st.markdown('<p style="color: #dc3545; font-size: 20px; font-weight: bold; margin: 0;">🔴 KÖVETKEZŐ:</p>', unsafe_allow_html=True)
-        valasztott_kovetkezo_str = st.selectbox(
-            "Következő", 
-            ceg_opciok, 
-            index=kovetkezo_idx, 
-            key="select_kovetkezo", 
-            label_visibility="collapsed"
-        )
-
-    uj_kov_idx = ceg_opciok.index(valasztott_kovetkezo_str)
-    if uj_kov_idx != kovetkezo_idx:
-        current_state["index"] = (uj_kov_idx - 1) % len(lista)
         save_state(current_state)
         st.rerun()
 
@@ -116,6 +99,7 @@ def futo_nezet():
 
     with col1:
         if nezet == "elol":
+            # ELÜLSŐ NÉZET: Küldheti az utolsó darabot, de közben a fenti menüvel függetlenül is válthat
             if not utolso:
                 if st.button("🛑 UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE", use_container_width=True, type="primary"):
                     current_state["utolso_darab"] = True
@@ -127,13 +111,13 @@ def futo_nezet():
                         ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE<br><span style="font-size:16px;">Várakozás a hátsó nyugtázásra...</span>
                     </div>
                 """, unsafe_allow_html=True)
-                st.markdown('<audio autoplay loop><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>', unsafe_allow_html=True)
         
         elif nezet == "hatul":
+            # HÁTSÓ NÉZET: Itt szól a hang és villog, amíg a gépkezelő ki nem veszi és meg nem nyomja a gombot
             if utolso:
                 st.markdown("""
                     <div class="figyelem-villog">
-                        ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BENN!
+                        ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BENN!<br><span style="font-size:16px;">Kérlek vedd ki és nyugtázd!</span>
                     </div>
                 """, unsafe_allow_html=True)
                 st.markdown('<audio autoplay loop><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>', unsafe_allow_html=True)
@@ -143,7 +127,7 @@ def futo_nezet():
                     current_state["index"] = (current_state["index"] + 1) % len(current_state["lista"])
                     current_state["utolso_darab"] = False
                     save_state(current_state)
-                    st.rerun() # Azonnali frissítés kényszerítése
+                    st.rerun()
             else:
                 st.markdown("""
                     <div style="background-color: #222; color: #FFD700; border: 2px solid #FFD700; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 18px;">
