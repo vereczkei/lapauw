@@ -36,7 +36,7 @@ params = st.query_params
 nezet = params.get("view", "hatul")
 state = load_state()
 
-# CSS stílusok a pontos koncepcióhoz igazítva (vastag keretek, nagy betűk)
+# CSS stílusok a keretekhez és a benne lévő elemekhez
 st.markdown("""
     <style>
     @keyframes villog {
@@ -55,24 +55,9 @@ st.markdown("""
         font-size: 28px;
         font-weight: bold;
     }
-    .aktualis-keret {
-        border: 4px solid #28a745;
-        background-color: #112211;
-        padding: 15px;
-        border-radius: 12px;
-        margin-bottom: 20px;
-    }
-    .kovetkezo-keret {
-        border: 4px solid #dc3545;
-        background-color: #221111;
-        padding: 15px;
-        border-radius: 12px;
-        margin-bottom: 20px;
-    }
-    /* A legördülő szövegét nagyobbra vesszük, hogy illeszkedjen az ipari kijelzőhöz */
-    .stSelectbox div[data-baseweb="select"] {
-        font-size: 32px !important;
-        font-weight: bold;
+    /* Streamlit dobozok stílusosítása kerettel */
+    div.stSelectbox {
+        padding-top: 5px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -91,40 +76,35 @@ def futo_nezet():
         return
 
     ceg_opciok = [f"{item['ceg']} {item['textil']}" for item in lista]
-    
     kovetkezo_idx = (idx + 1) % len(lista)
 
-    # --- ZÖLD KERET (Aktuális munka) ---
-    st.markdown('<div class="aktualis-keret">', unsafe_allow_html=True)
-    st.markdown('<p style="color: #28a745; font-size: 20px; font-weight: bold; margin-bottom: 0;">🟢 AKTUÁLIS MUNKA:</p>', unsafe_allow_html=True)
+    # --- ZÖLD KERETES DOBOZ (Aktuális munka) ---
+    with st.container(border=True):
+        st.markdown('<p style="color: #28a745; font-size: 20px; font-weight: bold; margin: 0;">🟢 AKTUÁLIS MUNKA:</p>', unsafe_allow_html=True)
+        valasztott_aktualis_str = st.selectbox(
+            "Aktuális", 
+            ceg_opciok, 
+            index=idx, 
+            key="select_aktualis", 
+            label_visibility="collapsed"
+        )
     
-    valasztott_aktualis_str = st.selectbox(
-        "Aktuális", 
-        ceg_opciok, 
-        index=idx, 
-        key="select_aktualis", 
-        label_visibility="collapsed"
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
-
     uj_idx = ceg_opciok.index(valasztott_aktualis_str)
     if uj_idx != idx:
         current_state["index"] = uj_idx
         save_state(current_state)
         st.rerun()
 
-    # --- PIROS KERET (Következő munka) ---
-    st.markdown('<div class="kovetkezo-keret">', unsafe_allow_html=True)
-    st.markdown('<p style="color: #dc3545; font-size: 20px; font-weight: bold; margin-bottom: 0;">🔴 KÖVETKEZŐ:</p>', unsafe_allow_html=True)
-    
-    valasztott_kovetkezo_str = st.selectbox(
-        "Következő", 
-        ceg_opciok, 
-        index=kovetkezo_idx, 
-        key="select_kovetkezo", 
-        label_visibility="collapsed"
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
+    # --- PIROS KERETES DOBOZ (Következő munka) ---
+    with st.container(border=True):
+        st.markdown('<p style="color: #dc3545; font-size: 20px; font-weight: bold; margin: 0;">🔴 KÖVETKEZŐ:</p>', unsafe_allow_html=True)
+        valasztott_kovetkezo_str = st.selectbox(
+            "Következő", 
+            ceg_opciok, 
+            index=kovetkezo_idx, 
+            key="select_kovetkezo", 
+            label_visibility="collapsed"
+        )
 
     uj_kov_idx = ceg_opciok.index(valasztott_kovetkezo_str)
     if uj_kov_idx != kovetkezo_idx:
@@ -149,7 +129,8 @@ def futo_nezet():
                         ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE<br><span style="font-size:16px;">Várakozás a hátsó nyugtázásra...</span>
                     </div>
                 """, unsafe_allow_html=True)
-                st.markdown('<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>', unsafe_allow_html=True)
+                # Hosszabb, folyamatosabb riasztási hang loop-pal
+                st.markdown('<audio autoplay loop><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>', unsafe_allow_html=True)
         
         elif nezet == "hatul":
             if utolso:
@@ -158,6 +139,7 @@ def futo_nezet():
                         ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BENN!
                     </div>
                 """, unsafe_allow_html=True)
+                # Hosszabb, folyamatosabb riasztási hang loop-pal hátul is
                 st.markdown('<audio autoplay loop><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>', unsafe_allow_html=True)
                 
                 st.write("")
