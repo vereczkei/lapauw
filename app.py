@@ -2,6 +2,7 @@
 import streamlit as st
 import json
 import os
+import html
 
 st.set_page_config(
     page_title="Vasalósor Vezérlő",
@@ -15,13 +16,20 @@ def load_state():
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                state = json.load(f)
+
+                state.setdefault("index", 0)
+                state.setdefault("utolso_darab", False)
+                state.setdefault("elvalasztott_ceg", "")
+                return state
+
         except (json.JSONDecodeError, OSError):
             pass
 
     state = {
         "index": 0,
         "utolso_darab": False,
+        "elvalasztott_ceg": "",
         "lista": [
             {"ceg": "Mika", "textil": "paplan"},
             {"ceg": "Mika", "textil": "lepedő"},
@@ -69,6 +77,18 @@ st.markdown("""
     text-align: center;
     font-size: 26px;
     font-weight: bold;
+}
+
+.ceg-nev {
+    background-color: #222;
+    color: #FFD700;
+    border: 3px solid #FFD700;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 25px;
+    font-weight: bold;
+    margin-top: 12px;
 }
 
 </style>
@@ -148,7 +168,7 @@ def futo_nezet():
                     font-size:25px;
                     font-weight:bold;
                     text-align:center;">
-                    {aktualis_nev}
+                    {html.escape(aktualis_nev)}
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -172,7 +192,13 @@ def futo_nezet():
                     type="primary"
                 ):
 
+                    # AZ AKTUÁLIS CÉG NEVÉNEK MENTÉSE
+                    current_state["elvalasztott_ceg"] = (
+                        ceg_opciok[current_state["index"]]
+                    )
+
                     current_state["utolso_darab"] = True
+
                     save_state(current_state)
                     st.rerun()
 
@@ -187,6 +213,17 @@ def futo_nezet():
                     </span>
                 </div>
                 """, unsafe_allow_html=True)
+
+                # ELÖL IS MEGJELENIK A RÖGZÍTETT CÉGNÉV
+
+                nev = html.escape(
+                    current_state.get("elvalasztott_ceg", "")
+                )
+
+                st.markdown(
+                    f'<div class="ceg-nev">📦 {nev}</div>',
+                    unsafe_allow_html=True
+                )
 
         # HÁTSÓ KEZELŐ
 
@@ -204,6 +241,17 @@ def futo_nezet():
                 </div>
                 """, unsafe_allow_html=True)
 
+                # A BEKÜLDÖTT CÉG NEVE HÁTUL IS LÁTHATÓ
+
+                nev = html.escape(
+                    current_state.get("elvalasztott_ceg", "")
+                )
+
+                st.markdown(
+                    f'<div class="ceg-nev">📦 {nev}</div>',
+                    unsafe_allow_html=True
+                )
+
                 st.markdown("""
                 <audio autoplay loop>
                     <source
@@ -220,13 +268,12 @@ def futo_nezet():
                     type="primary"
                 ):
 
-                    # CSAK A RIASZTÁST TÖRÖLJÜK!
-                    # A CÉGINDEXHEZ NEM NYÚLUNK!
+                    # CSAK A RIASZTÁST TÖRÖLJÜK
+                    # A CÉGET NEM VÁLTOZTATJUK!
 
                     current_state["utolso_darab"] = False
 
                     save_state(current_state)
-
                     st.rerun()
 
             else:
