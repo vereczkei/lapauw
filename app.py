@@ -44,114 +44,109 @@ st.markdown("""
     <style>
     @keyframes villog {
         0% { opacity: 1; }
-        50% { opacity: 0.2; }
+        50% { opacity: 0.3; }
         100% { opacity: 1; }
     }
     .figyelem-villog {
-        animation: villog 0.8s infinite;
+        animation: villog 1s infinite;
         background-color: #000000;
         color: #FFD700;
         border: 4px solid #FFD700;
-        padding: 25px;
+        padding: 20px;
         border-radius: 12px;
         text-align: center;
         font-size: 26px;
         font-weight: bold;
     }
-    .aktualis-doboz {
-        background-color: #1e1e1e;
-        border: 3px solid #28a745;
-        padding: 20px;
-        border-radius: 12px;
-        text-align: center;
-        margin-bottom: 20px;
+    div.stSelectbox {
+        padding-top: 5px;
     }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🏭 Vasalósor Vezérlő")
+@st.fragment(run_every=1)
+def futo_nezet():
+    # Minden másodpercben frissítjük az állapotot a fájlból, így látszik a másik oldal változása is
+    current_state = load_state()
+    current_idx = current_state["index"]
+    current_lista = current_state["lista"]
+    current_utolso = current_state["utolso_darab"]
 
-if not lista:
-    st.warning("Nincs aktív feladat.")
-    st.stop()
+    st.title("🏭 Vasalósor Vezérlő")
 
-akt_elem = lista[idx % len(lista)]
+    if not current_lista:
+        st.warning("Nincs aktív feladat.")
+        return
 
-# --- ZÖLD KERETES AKTUÁLIS MUNKA KIJELZÉS ÉS VÁLTÁS ---
-with st.container():
-    st.markdown(f"""
-        <div class="aktualis-doboz">
-            <p style="color: #28a745; font-size: 18px; margin: 0; font-weight: bold;">🟢 AKTUÁLIS MUNKA:</p>
-            <p style="color: #ffffff; font-size: 36px; margin: 10px 0 0 0; font-weight: bold;">{akt_elem['ceg']} - {akt_elem['textil'].upper()}</p>
-        </div>
-    """, unsafe_allow_html=True)
+    ceg_opciok = [f"{item['ceg']} {item['textil']}" for item in current_lista]
+    
+    if current_idx >= len(ceg_opciok):
+        current_idx = 0
 
-# Gombok a munkák független váltásához elöl/hátul bárhol
-col_v1, col_v2 = st.columns(2)
-with col_v1:
-    if st.button("⬅️ Előző Munka", use_container_width=True):
-        state["index"] = (idx - 1) % len(lista)
-        save_state(state)
-        st.rerun()
-with col_v2:
-    if st.button("Következő Munka ➡️", use_container_width=True):
-        state["index"] = (idx + 1) % len(lista)
-        save_state(state)
-        st.rerun()
-
-st.write("---")
-
-# --- NÉZETEK SZERETI LOGIKA ---
-if nezet == "elol":
-    if not utolso:
-        if st.button("🛑 UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE", use_container_width=True, type="primary"):
-            state["utolso_darab"] = True
-            save_state(state)
-            st.rerun()
-    else:
-        st.markdown("""
-            <div class="figyelem-villog">
-                ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE<br><span style="font-size:16px; color:#fff;">Várakozás a hátsó nyugtázásra...</span>
-            </div>
-        """, unsafe_allow_html=True)
-
-elif nezet == "hatul":
-    if utolso:
-        st.markdown("""
-            <div class="figyelem-villog">
-                ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BENN!<br><span style="font-size:16px; color:#fff;">Kérlek vedd ki és nyugtázd!</span>
-            </div>
-        """, unsafe_allow_html=True)
+    # --- ZÖLD KERETES DOBOZ A LEGÖRDÜLŐ MENÜVEL ---
+    with st.container(border=True):
+        st.markdown('<p style="color: #28a745; font-size: 20px; font-weight: bold; margin: 0;">🟢 AKTUÁLIS MUNKA:</p>', unsafe_allow_html=True)
         
-        # Hang lejátszás HTML5 audióval
-        st.markdown("""
-            <audio id="riasztas" autoplay loop>
-                <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
-            </audio>
-            <script>
-                var aud = document.getElementById("riasztas");
-                if(aud) { aud.play().catch(e => console.log("Blocked")); }
-            </script>
-        """, unsafe_allow_html=True)
-        
-        st.write("")
-        if st.button("✅ KIVÉVE / TOVÁBB A KÖVETKEZŐRE", use_container_width=True, type="primary"):
-            state["index"] = (idx + 1) % len(lista)
-            state["utolso_darab"] = False
-            save_state(state)
-            st.rerun()
-    else:
-        st.markdown("""
-            <div style="background-color: #222; color: #FFD700; border: 2px solid #FFD700; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 18px;">
-                🟡 Állapot: Normál menetben
-            </div>
-        """, unsafe_allow_html=True)
+        valasztott_str = st.selectbox(
+            "Aktuális", 
+            ceg_opciok, 
+            index=current_idx, 
+            key="aktualis_selectbox",
+            label_visibility="collapsed"
+        )
 
-# Automatikus háttérfrissítés (1 másodpercenként lekéri a legfrissebb állását a fájlnak)
-st.markdown("""
-    <script>
-        setTimeout(function(){
-            window.location.reload();
-        }, 1000);
-    </script>
-""", unsafe_allow_html=True)
+    # Ha a legördülőben más lett kiválasztva, azonnal mentjük és kényszerítjük a frissítést
+    uj_valasztott_idx = ceg_opciok.index(valasztott_str)
+    if uj_valasztott_idx != current_idx:
+        current_state["index"] = uj_valasztott_idx
+        save_state(current_state)
+        st.rerun()
+
+    st.write("---")
+
+    col1, col2 = st.columns([1.5, 1])
+
+    with col1:
+        if nezet == "elol":
+            if not current_utolso:
+                if st.button("🛑 UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE", use_container_width=True, type="primary"):
+                    current_state["utolso_darab"] = True
+                    save_state(current_state)
+                    st.rerun()
+            else:
+                st.markdown("""
+                    <div class="figyelem-villog">
+                        ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE<br><span style="font-size:16px;">Várakozás a hátsó nyugtázásra...</span>
+                    </div>
+                """, unsafe_allow_html=True)
+        
+        elif nezet == "hatul":
+            if current_utolso:
+                st.markdown("""
+                    <div class="figyelem-villog">
+                        ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BENN!<br><span style="font-size:16px;">Kérlek vedd ki és nyugtázd!</span>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # Stabil HTML5 audió loop
+                st.markdown("""
+                    <audio autoplay loop>
+                        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+                    </audio>
+                """, unsafe_allow_html=True)
+                
+                st.write("")
+                if st.button("✅ KIVÉVE / TOVÁBB A KÖVETKEZŐRE", use_container_width=True, type="primary"):
+                    # Léptetjük az indexet és kikapcsoljuk az utolsó darab jelzést
+                    current_state["index"] = (current_state["index"] + 1) % len(current_state["lista"])
+                    current_state["utolso_darab"] = False
+                    save_state(current_state)
+                    st.rerun()
+            else:
+                st.markdown("""
+                    <div style="background-color: #222; color: #FFD700; border: 2px solid #FFD700; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 18px;">
+                        🟡 Állapot: Normál menetben
+                    </div>
+                """, unsafe_allow_html=True)
+
+futo_nezet()
