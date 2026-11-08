@@ -34,122 +34,124 @@ def save_state(state):
 
 params = st.query_params
 nezet = params.get("view", "hatul")
+
 state = load_state()
+idx = state["index"]
+lista = state["lista"]
+utolso = state["utolso_darab"]
 
 st.markdown("""
     <style>
     @keyframes villog {
         0% { opacity: 1; }
-        50% { opacity: 0.3; }
+        50% { opacity: 0.2; }
         100% { opacity: 1; }
     }
     .figyelem-villog {
-        animation: villog 1s infinite;
+        animation: villog 0.8s infinite;
         background-color: #000000;
         color: #FFD700;
         border: 4px solid #FFD700;
+        padding: 25px;
+        border-radius: 12px;
+        text-align: center;
+        font-size: 26px;
+        font-weight: bold;
+    }
+    .aktualis-doboz {
+        background-color: #1e1e1e;
+        border: 3px solid #28a745;
         padding: 20px;
         border-radius: 12px;
         text-align: center;
-        font-size: 28px;
-        font-weight: bold;
-    }
-    div.stSelectbox {
-        padding-top: 5px;
+        margin-bottom: 20px;
     }
     </style>
 """, unsafe_allow_html=True)
 
-@st.fragment(run_every=1)
-def futo_nezet():
-    current_state = load_state()
-    idx = current_state["index"]
-    lista = current_state["lista"]
-    utolso = current_state["utolso_darab"]
-    
-    st.title("🏭 Vasalósor Vezérlő")
+st.title("🏭 Vasalósor Vezérlő")
 
-    if not lista:
-        st.warning("Nincs aktív feladat.")
-        return
+if not lista:
+    st.warning("Nincs aktív feladat.")
+    st.stop()
 
-    ceg_opciok = [f"{item['ceg']} {item['textil']}" for item in lista]
+akt_elem = lista[idx % len(lista)]
 
-    # Ha az index érvénytelen lenne, igazítjuk
-    if idx >= len(ceg_opciok):
-        idx = 0
+# --- ZÖLD KERETES AKTUÁLIS MUNKA KIJELZÉS ÉS VÁLTÁS ---
+with st.container():
+    st.markdown(f"""
+        <div class="aktualis-doboz">
+            <p style="color: #28a745; font-size: 18px; margin: 0; font-weight: bold;">🟢 AKTUÁLIS MUNKA:</p>
+            <p style="color: #ffffff; font-size: 36px; margin: 10px 0 0 0; font-weight: bold;">{akt_elem['ceg']} - {akt_elem['textil'].upper()}</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # Callback függvény a selectbox változásának kezelésére
-    def on_change_ceg():
-        valasztott = st.session_state.aktualis_valasztashoz
-        new_idx = ceg_opciok.index(valasztott)
-        current_state["index"] = new_idx
-        save_state(current_state)
+# Gombok a munkák független váltásához elöl/hátul bárhol
+col_v1, col_v2 = st.columns(2)
+with col_v1:
+    if st.button("⬅️ Előző Munka", use_container_width=True):
+        state["index"] = (idx - 1) % len(lista)
+        save_state(state)
+        st.rerun()
+with col_v2:
+    if st.button("Következő Munka ➡️", use_container_width=True):
+        state["index"] = (idx + 1) % len(lista)
+        save_state(state)
+        st.rerun()
 
-    # --- ZÖLD KERETES DOBOZ (Aktuális munka) ---
-    with st.container(border=True):
-        st.markdown('<p style="color: #28a745; font-size: 22px; font-weight: bold; margin: 0;">🟢 AKTUÁLIS MUNKA:</p>', unsafe_allow_html=True)
+st.write("---")
+
+# --- NÉZETEK SZERETI LOGIKA ---
+if nezet == "elol":
+    if not utolso:
+        if st.button("🛑 UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE", use_container_width=True, type="primary"):
+            state["utolso_darab"] = True
+            save_state(state)
+            st.rerun()
+    else:
+        st.markdown("""
+            <div class="figyelem-villog">
+                ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE<br><span style="font-size:16px; color:#fff;">Várakozás a hátsó nyugtázásra...</span>
+            </div>
+        """, unsafe_allow_html=True)
+
+elif nezet == "hatul":
+    if utolso:
+        st.markdown("""
+            <div class="figyelem-villog">
+                ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BENN!<br><span style="font-size:16px; color:#fff;">Kérlek vedd ki és nyugtázd!</span>
+            </div>
+        """, unsafe_allow_html=True)
         
-        st.selectbox(
-            "Aktuális", 
-            ceg_opciok, 
-            index=idx, 
-            key="aktualis_valasztashoz", 
-            on_change=on_change_ceg,
-            label_visibility="collapsed"
-        )
-
-    st.write("---")
-
-    col1, col2 = st.columns([1.5, 1])
-
-    with col1:
-        if nezet == "elol":
-            if not utolso:
-                if st.button("🛑 UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE", use_container_width=True, type="primary"):
-                    current_state["utolso_darab"] = True
-                    save_state(current_state)
-                    st.rerun()
-            else:
-                st.markdown("""
-                    <div class="figyelem-villog">
-                        ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE<br><span style="font-size:16px;">Várakozás a hátsó nyugtázásra...</span>
-                    </div>
-                """, unsafe_allow_html=True)
+        # Hang lejátszás HTML5 audióval
+        st.markdown("""
+            <audio id="riasztas" autoplay loop>
+                <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+            </audio>
+            <script>
+                var aud = document.getElementById("riasztas");
+                if(aud) { aud.play().catch(e => console.log("Blocked")); }
+            </script>
+        """, unsafe_allow_html=True)
         
-        elif nezet == "hatul":
-            if utolso:
-                st.markdown("""
-                    <div class="figyelem-villog">
-                        ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BENN!<br><span style="font-size:16px;">Kérlek vedd ki és nyugtázd!</span>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                st.markdown("""
-                    <audio id="riasztas-hang" autoplay loop>
-                        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
-                    </audio>
-                    <script>
-                        var audio = document.getElementById("riasztas-hang");
-                        if (audio) {
-                            audio.play().catch(function(error) {
-                                console.log("Autoplay blocked");
-                            });
-                        }
-                    </script>
-                """, unsafe_allow_html=True)
-                
-                st.write("")
-                if st.button("✅ KIVÉVE / TOVÁBB A KÖVETKEZŐRE", use_container_width=True, type="primary"):
-                    current_state["index"] = (current_state["index"] + 1) % len(current_state["lista"])
-                    current_state["utolso_darab"] = False
-                    save_state(current_state)
-                    st.rerun()
-            else:
-                st.markdown("""
-                    <div style="background-color: #222; color: #FFD700; border: 2px solid #FFD700; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 18px;">
-                        🟡 Állapot: Normál menetben
-                    </div>
-                """, unsafe_allow_html=True)
+        st.write("")
+        if st.button("✅ KIVÉVE / TOVÁBB A KÖVETKEZŐRE", use_container_width=True, type="primary"):
+            state["index"] = (idx + 1) % len(lista)
+            state["utolso_darab"] = False
+            save_state(state)
+            st.rerun()
+    else:
+        st.markdown("""
+            <div style="background-color: #222; color: #FFD700; border: 2px solid #FFD700; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 18px;">
+                🟡 Állapot: Normál menetben
+            </div>
+        """, unsafe_allow_html=True)
 
-futo_nezet()
+# Automatikus háttérfrissítés (1 másodpercenként lekéri a legfrissebb állását a fájlnak)
+st.markdown("""
+    <script>
+        setTimeout(function(){
+            window.location.reload();
+        }, 1000);
+    </script>
+""", unsafe_allow_html=True)
