@@ -66,7 +66,6 @@ st.markdown("""
 
 @st.fragment(run_every=1)
 def futo_nezet():
-    # Minden másodpercben frissítjük az állapotot a fájlból, így látszik a másik oldal változása is
     current_state = load_state()
     current_idx = current_state["index"]
     current_lista = current_state["lista"]
@@ -95,7 +94,6 @@ def futo_nezet():
             label_visibility="collapsed"
         )
 
-    # Ha a legördülőben más lett kiválasztva, azonnal mentjük és kényszerítjük a frissítést
     uj_valasztott_idx = ceg_opciok.index(valasztott_str)
     if uj_valasztott_idx != current_idx:
         current_state["index"] = uj_valasztott_idx
@@ -128,7 +126,7 @@ def futo_nezet():
                     </div>
                 """, unsafe_allow_html=True)
                 
-                # Stabil HTML5 audió loop
+                # Stabil HTML5 audió loop + JS alapú kényszerített oldalfrissítés a gombnyomáshoz
                 st.markdown("""
                     <audio autoplay loop>
                         <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
@@ -137,10 +135,18 @@ def futo_nezet():
                 
                 st.write("")
                 if st.button("✅ KIVÉVE / TOVÁBB A KÖVETKEZŐRE", use_container_width=True, type="primary"):
-                    # Léptetjük az indexet és kikapcsoljuk az utolsó darab jelzést
                     current_state["index"] = (current_state["index"] + 1) % len(current_state["lista"])
                     current_state["utolso_darab"] = False
                     save_state(current_state)
+                    
+                    # JavaScript kényszerített teljes oldalfrissítés, hogy azonnal eltűnjön a jelzés és frissüljön minden
+                    st.markdown("""
+                        <script>
+                            setTimeout(function(){
+                                window.location.reload();
+                            }, 100);
+                        </script>
+                    """, unsafe_allow_html=True)
                     st.rerun()
             else:
                 st.markdown("""
