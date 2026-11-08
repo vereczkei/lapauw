@@ -75,22 +75,29 @@ def futo_nezet():
 
     ceg_opciok = [f"{item['ceg']} {item['textil']}" for item in lista]
 
+    # Ha az index érvénytelen lenne, igazítjuk
+    if idx >= len(ceg_opciok):
+        idx = 0
+
+    # Callback függvény a selectbox változásának kezelésére
+    def on_change_ceg():
+        valasztott = st.session_state.aktualis_valasztashoz
+        new_idx = ceg_opciok.index(valasztott)
+        current_state["index"] = new_idx
+        save_state(current_state)
+
     # --- ZÖLD KERETES DOBOZ (Aktuális munka) ---
     with st.container(border=True):
         st.markdown('<p style="color: #28a745; font-size: 22px; font-weight: bold; margin: 0;">🟢 AKTUÁLIS MUNKA:</p>', unsafe_allow_html=True)
-        valasztott_aktualis_str = st.selectbox(
+        
+        st.selectbox(
             "Aktuális", 
             ceg_opciok, 
             index=idx, 
-            key="select_aktualis", 
+            key="aktualis_valasztashoz", 
+            on_change=on_change_ceg,
             label_visibility="collapsed"
         )
-    
-    uj_idx = ceg_opciok.index(valasztott_aktualis_str)
-    if uj_idx != idx:
-        current_state["index"] = uj_idx
-        save_state(current_state)
-        st.rerun()
 
     st.write("---")
 
@@ -118,7 +125,6 @@ def futo_nezet():
                     </div>
                 """, unsafe_allow_html=True)
                 
-                # Biztosított audio elem loop-pal és JS lejátszási kényszerítéssel
                 st.markdown("""
                     <audio id="riasztas-hang" autoplay loop>
                         <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
@@ -127,7 +133,7 @@ def futo_nezet():
                         var audio = document.getElementById("riasztas-hang");
                         if (audio) {
                             audio.play().catch(function(error) {
-                                console.log("Autoplay blocked, waiting for interaction");
+                                console.log("Autoplay blocked");
                             });
                         }
                     </script>
