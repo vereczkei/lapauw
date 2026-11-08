@@ -36,7 +36,6 @@ params = st.query_params
 nezet = params.get("view", "hatul")
 state = load_state()
 
-# CSS stílusok a keretekhez és a benne lévő elemekhez
 st.markdown("""
     <style>
     @keyframes villog {
@@ -55,7 +54,6 @@ st.markdown("""
         font-size: 28px;
         font-weight: bold;
     }
-    /* Streamlit dobozok stílusosítása kerettel */
     div.stSelectbox {
         padding-top: 5px;
     }
@@ -129,7 +127,6 @@ def futo_nezet():
                         ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE<br><span style="font-size:16px;">Várakozás a hátsó nyugtázásra...</span>
                     </div>
                 """, unsafe_allow_html=True)
-                # Hosszabb, folyamatosabb riasztási hang loop-pal
                 st.markdown('<audio autoplay loop><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>', unsafe_allow_html=True)
         
         elif nezet == "hatul":
@@ -139,7 +136,6 @@ def futo_nezet():
                         ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BENN!
                     </div>
                 """, unsafe_allow_html=True)
-                # Hosszabb, folyamatosabb riasztási hang loop-pal hátul is
                 st.markdown('<audio autoplay loop><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>', unsafe_allow_html=True)
                 
                 st.write("")
@@ -147,7 +143,7 @@ def futo_nezet():
                     current_state["index"] = (current_state["index"] + 1) % len(current_state["lista"])
                     current_state["utolso_darab"] = False
                     save_state(current_state)
-                    st.rerun()
+                    st.rerun() # Azonnali frissítés kényszerítése
             else:
                 st.markdown("""
                     <div style="background-color: #222; color: #FFD700; border: 2px solid #FFD700; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 18px;">
