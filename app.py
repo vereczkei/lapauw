@@ -36,6 +36,7 @@ params = st.query_params
 nezet = params.get("view", "hatul")
 state = load_state()
 
+# CSS stílusok a pontos koncepcióhoz igazítva (vastag keretek, nagy betűk)
 st.markdown("""
     <style>
     @keyframes villog {
@@ -54,14 +55,29 @@ st.markdown("""
         font-size: 28px;
         font-weight: bold;
     }
+    .aktualis-keret {
+        border: 4px solid #28a745;
+        background-color: #112211;
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+    .kovetkezo-keret {
+        border: 4px solid #dc3545;
+        background-color: #221111;
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+    /* A legördülő szövegét nagyobbra vesszük, hogy illeszkedjen az ipari kijelzőhöz */
     .stSelectbox div[data-baseweb="select"] {
-        font-size: 28px !important;
+        font-size: 32px !important;
         font-weight: bold;
     }
     </style>
 """, unsafe_allow_html=True)
 
-@st.fragment(run_changed_views=True, run_every=1)
+@st.fragment(run_every=1)
 def futo_nezet():
     current_state = load_state()
     idx = current_state["index"]
@@ -76,26 +92,40 @@ def futo_nezet():
 
     ceg_opciok = [f"{item['ceg']} {item['textil']}" for item in lista]
     
-    aktualis_elem = lista[idx]
     kovetkezo_idx = (idx + 1) % len(lista)
-    kovetkezo_elem = lista[kovetkezo_idx]
 
-    # --- ZÖLD KERET: AKTUÁLIS MUNKA ---
-    st.markdown('<p style="color: #28a745; font-weight: bold; font-size: 20px; margin-bottom: 0;">🟢 AKTUÁLIS MUNKA:</p>', unsafe_allow_html=True)
-    valasztott_aktualis_str = st.selectbox("Aktuális", ceg_opciok, index=idx, key="select_aktualis", label_visibility="collapsed")
+    # --- ZÖLD KERET (Aktuális munka) ---
+    st.markdown('<div class="aktualis-keret">', unsafe_allow_html=True)
+    st.markdown('<p style="color: #28a745; font-size: 20px; font-weight: bold; margin-bottom: 0;">🟢 AKTUÁLIS MUNKA:</p>', unsafe_allow_html=True)
     
+    valasztott_aktualis_str = st.selectbox(
+        "Aktuális", 
+        ceg_opciok, 
+        index=idx, 
+        key="select_aktualis", 
+        label_visibility="collapsed"
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
     uj_idx = ceg_opciok.index(valasztott_aktualis_str)
     if uj_idx != idx:
         current_state["index"] = uj_idx
         save_state(current_state)
         st.rerun()
 
-    st.write("")
-
-    # --- PIROS KERET: KÖVETKEZŐ ---
-    st.markdown('<p style="color: #dc3545; font-weight: bold; font-size: 20px; margin-bottom: 0;">🔴 KÖVETKEZŐ:</p>', unsafe_allow_html=True)
-    valasztott_kovetkezo_str = st.selectbox("Következő", ceg_opciok, index=kovetkezo_idx, key="select_kovetkezo", label_visibility="collapsed")
+    # --- PIROS KERET (Következő munka) ---
+    st.markdown('<div class="kovetkezo-keret">', unsafe_allow_html=True)
+    st.markdown('<p style="color: #dc3545; font-size: 20px; font-weight: bold; margin-bottom: 0;">🔴 KÖVETKEZŐ:</p>', unsafe_allow_html=True)
     
+    valasztott_kovetkezo_str = st.selectbox(
+        "Következő", 
+        ceg_opciok, 
+        index=kovetkezo_idx, 
+        key="select_kovetkezo", 
+        label_visibility="collapsed"
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
     uj_kov_idx = ceg_opciok.index(valasztott_kovetkezo_str)
     if uj_kov_idx != kovetkezo_idx:
         current_state["index"] = (uj_kov_idx - 1) % len(lista)
