@@ -75,7 +75,7 @@ def futo_nezet():
 
     ceg_opciok = [f"{item['ceg']} {item['textil']}" for item in lista]
 
-    # --- ZÖLD KERETES DOBOZ (Csak az Aktuális munka) ---
+    # --- ZÖLD KERETES DOBOZ (Aktuális munka) ---
     with st.container(border=True):
         st.markdown('<p style="color: #28a745; font-size: 22px; font-weight: bold; margin: 0;">🟢 AKTUÁLIS MUNKA:</p>', unsafe_allow_html=True)
         valasztott_aktualis_str = st.selectbox(
@@ -86,7 +86,6 @@ def futo_nezet():
             label_visibility="collapsed"
         )
     
-    # Ha bárhol elforgatják/váltják a menüben, azonnal mentődik
     uj_idx = ceg_opciok.index(valasztott_aktualis_str)
     if uj_idx != idx:
         current_state["index"] = uj_idx
@@ -99,7 +98,6 @@ def futo_nezet():
 
     with col1:
         if nezet == "elol":
-            # ELÜLSŐ NÉZET: Küldheti az utolsó darabot, de közben a fenti menüvel függetlenül is válthat
             if not utolso:
                 if st.button("🛑 UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE", use_container_width=True, type="primary"):
                     current_state["utolso_darab"] = True
@@ -113,14 +111,27 @@ def futo_nezet():
                 """, unsafe_allow_html=True)
         
         elif nezet == "hatul":
-            # HÁTSÓ NÉZET: Itt szól a hang és villog, amíg a gépkezelő ki nem veszi és meg nem nyomja a gombot
             if utolso:
                 st.markdown("""
                     <div class="figyelem-villog">
                         ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BENN!<br><span style="font-size:16px;">Kérlek vedd ki és nyugtázd!</span>
                     </div>
                 """, unsafe_allow_html=True)
-                st.markdown('<audio autoplay loop><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>', unsafe_allow_html=True)
+                
+                # Biztosított audio elem loop-pal és JS lejátszási kényszerítéssel
+                st.markdown("""
+                    <audio id="riasztas-hang" autoplay loop>
+                        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+                    </audio>
+                    <script>
+                        var audio = document.getElementById("riasztas-hang");
+                        if (audio) {
+                            audio.play().catch(function(error) {
+                                console.log("Autoplay blocked, waiting for interaction");
+                            });
+                        }
+                    </script>
+                """, unsafe_allow_html=True)
                 
                 st.write("")
                 if st.button("✅ KIVÉVE / TOVÁBB A KÖVETKEZŐRE", use_container_width=True, type="primary"):
