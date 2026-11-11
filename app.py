@@ -2,24 +2,27 @@
 import streamlit as st
 import json
 import os
-import html
+from pathlib import Path
+import streamlit.components.v1 as components
 
-# =========================================================
+# ==========================================
 # ALAPBEÁLLÍTÁSOK
-# =========================================================
+# ==========================================
 
 st.set_page_config(
-    page_title="Vasalósor Vezérlő",
-    page_icon="🏭",
+    page_title="Vasalósor vezérlő",
+    page_icon="🧺",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-DATA_FILE = "vasalosor_allapot.json"
+BASE_DIR = Path(__file__).parent
+STATE_FILE = BASE_DIR / "vasalosor_allapot.json"
+LOGO_FILE = BASE_DIR / "logo.webp"
 
-# =========================================================
-# CÉGLISTA - ABC SORRENDBEN
-# =========================================================
+# ==========================================
+# PARTNEREK
+# ==========================================
 
 CEGEK = [
     "1.0",
@@ -47,702 +50,420 @@ CEGEK = [
     "Wonder",
 ]
 
-# Stories és La Rouge esetében csak lepedő
-
-CSAK_LEPEDO = [
-    "Stories",
-    "La Rouge",
-]
+CSAK_LEPEDO = ["Stories", "La Rouge"]
 
 DEFAULT_LISTA = []
 
 for ceg in CEGEK:
     if ceg in CSAK_LEPEDO:
-        DEFAULT_LISTA.append({
-            "ceg": ceg,
-            "textil": "lepedő"
-        })
+        DEFAULT_LISTA.append(f"{ceg} – Lepedő")
     else:
-        DEFAULT_LISTA.append({
-            "ceg": ceg,
-            "textil": "paplan"
-        })
-
-        DEFAULT_LISTA.append({
-            "ceg": ceg,
-            "textil": "lepedő"
-        })
-
-# =========================================================
-# ÁLLAPOT BETÖLTÉSE ÉS MENTÉSE
-# =========================================================
-
-def save_state(state):
-
-    temp_file = DATA_FILE + ".tmp"
-
-    with open(temp_file, "w", encoding="utf-8") as f:
-        json.dump(
-            state,
-            f,
-            ensure_ascii=False,
-            indent=4
-        )
-
-    os.replace(temp_file, DATA_FILE)
+        DEFAULT_LISTA.append(f"{ceg} – Paplan")
+        DEFAULT_LISTA.append(f"{ceg} – Lepedő")
 
 
-def load_state():
+# ==========================================
+# ÁLLAPOTKEZELÉS
+# ==========================================
 
-    if os.path.exists(DATA_FILE):
-
-        try:
-
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
-                state = json.load(f)
-
-            old_lista = state.get("lista", [])
-            old_index = state.get("index", 0)
-
-            if not isinstance(old_lista, list):
-                old_lista = []
-
-            if not isinstance(old_index, int):
-                old_index = 0
-
-            # Régi aktuális munka megőrzése,
-            # ha az új listában is szerepel.
-
-            aktualis = None
-
-            if 0 <= old_index < len(old_lista):
-                aktualis = old_lista[old_index]
-
-            uj_index = 0
-
-            if aktualis in DEFAULT_LISTA:
-                uj_index = DEFAULT_LISTA.index(aktualis)
-
-            state["lista"] = DEFAULT_LISTA.copy()
-            state["index"] = uj_index
-
-            state.setdefault("utolso_darab", False)
-            state.setdefault("elvalasztott_ceg", "")
-
-            save_state(state)
-
-            return state
-
-        except (json.JSONDecodeError, OSError, TypeError):
-            pass
-
-    state = {
+def alap_allapot():
+    return {
         "index": 0,
         "utolso_darab": False,
         "elvalasztott_ceg": "",
-        "lista": DEFAULT_LISTA.copy()
+        "lista": DEFAULT_LISTA
     }
 
-    save_state(state)
+
+def save_state(state):
+    try:
+        temp_file = str(STATE_FILE) + ".tmp"
+
+        with open(temp_file, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=4)
+
+        os.replace(temp_file, STATE_FILE)
+
+    except Exception as e:
+        st.error(f"Mentési hiba: {e}")
+
+
+def load_state():
+    state = alap_allapot()
+
+    try:
+        if STATE_FILE.exists():
+            with open(STATE_FILE, "r", encoding="utf-8") as f:
+                old_state = json.load(f)
+
+            if isinstance(old_state, dict):
+                state.update(old_state)
+
+    except Exception:
+        pass
+
+    # Az új partnerlista használata
+    state["lista"] = DEFAULT_LISTA
+
+    try:
+        state["index"] = int(state.get("index", 0))
+    except (ValueError, TypeError):
+        state["index"] = 0
+
+    state["index"] = max(
+        0,
+        min(state["index"], len(DEFAULT_LISTA) - 1)
+    )
+
+    state["utolso_darab"] = bool(
+        state.get("utolso_darab", False)
+    )
+
+    state["elvalasztott_ceg"] = str(
+        state.get("elvalasztott_ceg", "")
+    )
 
     return state
 
 
-# =========================================================
-# MODERN MEGJELENÉS
-# =========================================================
+# ==========================================
+# KÖZÖS MEGJELENÉS
+# ==========================================
 
 st.markdown("""
 <style>
 
-/* ALAP HÁTTÉR */
-
 .stApp {
     background:
         radial-gradient(
-            ellipse at top,
-            #263440 0%,
-            #151d25 48%,
-            #10151b 100%
+            circle at top,
+            #26313a 0%,
+            #111820 55%,
+            #090d12 100%
         );
-
-    color: #f1f5f9;
+    color: #f2f4f5;
 }
 
-/* FELSŐ TERÜLET */
+.block-container {
+    padding-top: 1.5rem;
+    padding-bottom: 1rem;
+    max-width: 1000px;
+}
 
 header[data-testid="stHeader"] {
     background: transparent;
 }
 
-.block-container {
-    max-width: 1400px;
-    padding-top: 2rem;
-    padding-bottom: 3rem;
+footer {
+    visibility: hidden;
 }
 
-/* OLDALCÍM */
+#MainMenu {
+    visibility: hidden;
+}
+
+h1, h2, h3 {
+    color: #f3f4f5 !important;
+    font-weight: 800 !important;
+}
 
 .main-title {
     text-align: center;
-    font-size: clamp(27px, 4vw, 42px);
+    font-size: clamp(25px, 4vw, 38px);
     font-weight: 900;
     letter-spacing: 2px;
-    color: #f8fafc;
+    color: #f0bd55;
+    margin-top: 12px;
     margin-bottom: 5px;
 }
 
-.main-subtitle {
+.sub-title {
     text-align: center;
-    color: #94a3b8;
-    font-size: 14px;
+    color: #9ba9b5;
+    font-size: 13px;
     letter-spacing: 3px;
+    margin-bottom: 30px;
+}
+
+.status-normal {
+    text-align: center;
+    color: #8be0a8;
+    font-size: 20px;
+    font-weight: 800;
+    padding: 20px 5px;
+    letter-spacing: 1px;
+}
+
+.status-alert {
+    text-align: center;
+    color: #ff6262;
+    font-size: clamp(25px, 5vw, 42px);
+    font-weight: 900;
+    padding: 20px 5px;
+    animation: villogas 1s infinite;
+}
+
+@keyframes villogas {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.35;
+    }
+}
+
+.work-label {
+    text-align: center;
+    color: #aeb9c3;
+    font-size: 15px;
+    letter-spacing: 2px;
+    margin-top: 20px;
+}
+
+.work-name {
+    text-align: center;
+    color: #f0bd55;
+    font-size: clamp(24px, 5vw, 42px);
+    font-weight: 900;
+    margin-top: 10px;
     margin-bottom: 25px;
 }
 
-/* KÖZÖS LOGÓ */
-
-.logo-container {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 12px;
+div[data-testid="stSelectbox"] label {
+    color: #c5cdd4 !important;
+    font-weight: 700;
 }
 
-.logo-box {
-    width: 65px;
-    height: 65px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    background: linear-gradient(
-        145deg,
-        #d9a441,
-        #8e641b
-    );
-
-    border: 2px solid #f8d477;
-    border-radius: 17px;
-
-    color: #111820;
-    font-size: 27px;
-    font-weight: 1000;
-
-    box-shadow: 0 5px 25px rgba(218,164,65,0.25);
+div[data-testid="stSelectbox"] > div > div {
+    background: #202b35;
+    color: white;
+    border: 1px solid #46535f;
+    border-radius: 12px;
+    min-height: 55px;
 }
 
-/* KÁRTYÁK */
-
-div[data-testid="stVerticalBlockBorderWrapper"] {
-    background: rgba(255,255,255,0.035);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 17px;
-    padding: 15px;
-}
-
-/* AKTUÁLIS MUNKA */
-
-.section-label {
-    color: #4ade80;
+.stButton > button {
+    width: 100%;
+    min-height: 68px;
+    border-radius: 13px;
+    border: none;
     font-size: 17px;
     font-weight: 900;
     letter-spacing: 1px;
-    text-align: center;
-    margin-bottom: 14px;
+    transition: 0.2s;
 }
-
-.current-work {
-    background: linear-gradient(
-        135deg,
-        #123d2b,
-        #175239
-    );
-
-    border: 2px solid #36b879;
-    border-radius: 14px;
-
-    padding: 22px 12px;
-
-    color: #ffffff;
-    text-align: center;
-
-    font-size: clamp(23px, 3vw, 34px);
-    font-weight: 900;
-
-    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-}
-
-/* GOMBOK */
-
-.stButton > button {
-    min-height: 65px;
-
-    border-radius: 13px;
-    border: 1px solid #536272;
-
-    background: linear-gradient(
-        135deg,
-        #344454,
-        #253341
-    );
-
-    color: white;
-
-    font-size: 17px;
-    font-weight: 800;
-
-    transition: all 0.2s ease;
-}
-
-.stButton > button:hover {
-    border-color: #e8b94f;
-    color: #ffd76a;
-    transform: translateY(-2px);
-}
-
-/* ELSŐDLEGES GOMB */
 
 .stButton > button[kind="primary"] {
     background: linear-gradient(
         135deg,
-        #b78a2f,
-        #896018
+        #dba83f,
+        #f2cb72
     );
-
-    color: #ffffff;
-    border: 2px solid #f1cc72;
-
-    font-weight: 900;
+    color: #171b20;
 }
 
 .stButton > button[kind="primary"]:hover {
-    background: linear-gradient(
-        135deg,
-        #d2a640,
-        #a57924
-    );
+    background: #ffdc8a;
+    color: #111820;
+    transform: scale(1.01);
+}
 
+.stButton > button:not([kind="primary"]) {
+    background: #263641;
     color: #ffffff;
+    border: 1px solid #536574;
 }
 
-/* LEGÖRDÜLŐ MENÜ */
+.stButton > button:not([kind="primary"]):hover {
+    background: #344957;
+    border-color: #e0b65c;
+}
 
-div[data-baseweb="select"] > div {
-    background-color: #202d39;
-    border: 2px solid #536779;
+div[data-testid="stAlert"] {
     border-radius: 12px;
-    min-height: 60px;
-    color: white;
-}
-
-div[data-baseweb="select"] span {
-    font-size: 20px;
-    font-weight: 800;
-}
-
-/* FIGYELMEZTETÉS */
-
-@keyframes villog {
-    0% {
-        opacity: 1;
-        border-color: #ffd700;
-    }
-
-    50% {
-        opacity: 0.55;
-        border-color: #ff8c00;
-    }
-
-    100% {
-        opacity: 1;
-        border-color: #ffd700;
-    }
-}
-
-.figyelem-villog {
-    animation: villog 1s infinite;
-
-    background: linear-gradient(
-        135deg,
-        #471717,
-        #230d0d
-    );
-
-    color: #ffd700;
-
-    border: 4px solid #ffd700;
-    border-radius: 17px;
-
-    padding: 25px 12px;
-
-    text-align: center;
-
-    font-size: clamp(20px, 3vw, 30px);
-    font-weight: 1000;
-
-    box-shadow: 0 0 25px rgba(255,180,0,0.25);
-
-    margin: 10px 0;
-}
-
-/* ELVÁLASZTÓ CÉGNEVE */
-
-.ceg-nev {
-    background: linear-gradient(
-        135deg,
-        #263747,
-        #192630
-    );
-
-    color: #ffd76a;
-
-    border: 2px solid #d5a33c;
-    border-radius: 13px;
-
-    padding: 20px 10px;
-
-    text-align: center;
-
-    font-size: clamp(22px, 3vw, 30px);
-    font-weight: 900;
-
-    margin-top: 15px;
-}
-
-/* NORMÁL ÁLLAPOT */
-
-.normal-status {
-    background: linear-gradient(
-        135deg,
-        #173e2a,
-        #10291d
-    );
-
-    border: 2px solid #299b59;
-    border-radius: 13px;
-
-    padding: 23px 10px;
-
-    text-align: center;
-
-    color: #64e99a;
-
-    font-size: 20px;
-    font-weight: 900;
-}
-
-/* ALSÓ INFORMÁCIÓ */
-
-.footer-info {
-    text-align: center;
-    color: #718096;
-    font-size: 12px;
-    margin-top: 25px;
-}
-
-/* MOBIL ÉS TABLET */
-
-@media (max-width: 768px) {
-
-    .block-container {
-        padding-left: 12px;
-        padding-right: 12px;
-        padding-top: 1rem;
-    }
-
-    .stButton > button {
-        min-height: 75px;
-        font-size: 16px;
-    }
-
-    .figyelem-villog {
-        padding: 22px 8px;
-    }
-
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 
-# =========================================================
-# NÉZET KIVÁLASZTÁSA
-# =========================================================
+# ==========================================
+# KÖZÖS LOGÓ
+# ==========================================
 
-params = st.query_params
+def logo_megjelenites():
+    bal, kozep, jobb = st.columns([1, 2, 1])
 
-nezet = params.get("view", "hatul")
-
-if nezet not in ["elol", "hatul"]:
-    nezet = "hatul"
-
-
-# =========================================================
-# FŐ VEZÉRLŐFELÜLET
-# =========================================================
-
-@st.fragment(run_every=1)
-def futo_nezet():
-
-    current_state = load_state()
-
-    lista = current_state["lista"]
-
-    if not lista:
-        st.warning("Nincs aktív feladat.")
-        return
-
-    idx = current_state["index"]
-
-    if idx >= len(lista):
-        idx = 0
-        current_state["index"] = 0
-        save_state(current_state)
-
-    utolso = current_state["utolso_darab"]
-
-    ceg_opciok = [
-        f"{item['ceg']} – {item['textil'].capitalize()}"
-        for item in lista
-    ]
-
-    # =====================================================
-    # FEJLÉC
-    # =====================================================
-
-    st.markdown("""
-    <div class="logo-container">
-        <div class="logo-box">VS</div>
-    </div>
-
-    <div class="main-title">
-        VASALÓSOR VEZÉRLŐ
-    </div>
-
-    <div class="main-subtitle">
-        INDUSTRIAL CONTROL SYSTEM
-    </div>
-    """, unsafe_allow_html=True)
-
-    if nezet == "elol":
-
-        st.caption("🟢 ELÜLSŐ KEZELŐÁLLOMÁS")
-
-    else:
-
-        st.caption("🔵 HÁTSÓ ELLENŐRZŐ ÁLLOMÁS")
-
-    # =====================================================
-    # AKTUÁLIS MUNKA
-    # =====================================================
-
-    with st.container(border=True):
-
-        st.markdown(
-            '<div class="section-label">'
-            '🟢 AKTUÁLIS MUNKA'
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-        if nezet == "elol":
-
-            valasztott = st.selectbox(
-                "Aktuális munka",
-                ceg_opciok,
-                index=idx,
-                key="aktualis_selectbox",
-                label_visibility="collapsed"
-            )
-
-            uj_idx = ceg_opciok.index(valasztott)
-
-            if uj_idx != idx:
-
-                current_state["index"] = uj_idx
-
-                save_state(current_state)
-
-                st.rerun()
-
+    with kozep:
+        if LOGO_FILE.exists():
+            st.image(str(LOGO_FILE), use_container_width=True)
         else:
-
-            aktualis_nev = ceg_opciok[idx]
-
             st.markdown(
-                f'<div class="current-work">'
-                f'{html.escape(aktualis_nev)}'
-                f'</div>',
+                '<div class="main-title">VASALÓSOR</div>',
                 unsafe_allow_html=True
             )
 
-    st.write("")
 
-    col1, col2 = st.columns([1.5, 1])
-
-    # =====================================================
-    # ELÜLSŐ KEZELŐ
-    # =====================================================
-
-    with col1:
-
-        if nezet == "elol":
-
-            if not utolso:
-
-                if st.button(
-                    "🛑 UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE",
-                    use_container_width=True,
-                    type="primary"
-                ):
-
-                    current_state["elvalasztott_ceg"] = (
-                        ceg_opciok[current_state["index"]]
-                    )
-
-                    current_state["utolso_darab"] = True
-
-                    save_state(current_state)
-
-                    st.rerun()
-
-            else:
-
-                st.markdown("""
-                <div class="figyelem-villog">
-
-                    ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE
-
-                    <div style="
-                        font-size:16px;
-                        margin-top:12px;
-                        color:white;
-                        font-weight:600;
-                    ">
-                        Várakozás a hátsó nyugtázásra...
-                    </div>
-
-                </div>
-                """, unsafe_allow_html=True)
-
-                nev = html.escape(
-                    current_state.get("elvalasztott_ceg", "")
-                )
-
-                st.markdown(
-                    f'<div class="ceg-nev">'
-                    f'📦 {nev}'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-
-    # =====================================================
-    # HÁTSÓ KEZELŐ
-    # =====================================================
-
-    with col2:
-
-        if nezet == "hatul":
-
-            if utolso:
-
-                st.markdown("""
-                <div class="figyelem-villog">
-
-                    ⚠️ UTOLSÓ DARAB / ELVÁLASZTÓ BENN!
-
-                    <div style="
-                        font-size:16px;
-                        margin-top:12px;
-                        color:white;
-                        font-weight:600;
-                    ">
-                        Kérlek vedd ki és nyugtázd!
-                    </div>
-
-                </div>
-                """, unsafe_allow_html=True)
-
-                nev = html.escape(
-                    current_state.get("elvalasztott_ceg", "")
-                )
-
-                st.markdown(
-                    f'<div class="ceg-nev">'
-                    f'📦 {nev}'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-
-                # HANGJELZÉS
-
-                st.markdown("""
-                <audio autoplay loop>
-                    <source
-                    src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
-                    type="audio/mpeg">
-                </audio>
-                """, unsafe_allow_html=True)
-
-                st.write("")
-
-                if st.button(
-                    "✅ KIVÉVE / NYUGTÁZÁS",
-                    use_container_width=True,
-                    type="primary"
-                ):
-
-                    current_state["utolso_darab"] = False
-
-                    save_state(current_state)
-
-                    st.rerun()
-
-            else:
-
-                st.markdown("""
-                <div class="normal-status">
-
-                    🟢 NORMÁL MENETBEN
-
-                    <div style="
-                        font-size:13px;
-                        margin-top:7px;
-                        color:#a7d9b9;
-                    ">
-                        Nincs aktív riasztás
-                    </div>
-
-                </div>
-                """, unsafe_allow_html=True)
-
-    # =====================================================
-    # ALSÓ INFORMÁCIÓ
-    # =====================================================
-
-    st.markdown("---")
-
+def cim_megjelenites():
     st.markdown(
-        f"""
-        <div class="footer-info">
-
-            VASALÓSOR VEZÉRLŐ SYSTEM<br>
-
-            PARTNEREK: {len(CEGEK)}
-            &nbsp; | &nbsp;
-            VÁLASZTHATÓ MUNKÁK: {len(DEFAULT_LISTA)}
-            <br><br>
-
-            {'ELÜLSŐ KEZELŐÁLLOMÁS' if nezet == 'elol' else 'HÁTSÓ ELLENŐRZŐ ÁLLOMÁS'}
-
-        </div>
-        """,
+        '<div class="main-title">VASALÓSOR VEZÉRLŐ</div>',
         unsafe_allow_html=True
     )
 
 
-# =========================================================
-# INDÍTÁS
-# =========================================================
+# ==========================================
+# ELÜLSŐ KEZELŐÁLLOMÁS
+# ==========================================
+
+def elso_nezet():
+
+    state = load_state()
+
+    logo_megjelenites()
+    cim_megjelenites()
+
+    st.markdown(
+        '<div class="sub-title">ELÜLSŐ KEZELŐÁLLOMÁS</div>',
+        unsafe_allow_html=True
+    )
+
+    if state["utolso_darab"]:
+        st.markdown(
+            '<div class="status-alert">⚠ ELVÁLASZTÓ SZÜKSÉGES ⚠</div>',
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
+            '<div class="work-label">ELVÁLASZTOTT PARTNER</div>',
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
+            f'<div class="work-name">{state["elvalasztott_ceg"]}</div>',
+            unsafe_allow_html=True
+        )
+
+        st.info("A hátulsó kezelőállomás nyugtázására vár.")
+
+    else:
+        st.markdown(
+            '<div class="status-normal">🟢 NORMÁL MENETBEN</div>',
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
+            '<div class="work-label">KÖVETKEZŐ MUNKA KIVÁLASZTÁSA</div>',
+            unsafe_allow_html=True
+        )
+
+        selected = st.selectbox(
+            "Partner és munkatípus",
+            DEFAULT_LISTA,
+            index=state["index"],
+            key="aktualis_selectbox"
+        )
+
+        selected_index = DEFAULT_LISTA.index(selected)
+
+        if selected_index != state["index"]:
+            state["index"] = selected_index
+            save_state(state)
+
+        st.markdown(
+            f'<div class="work-name">{selected}</div>',
+            unsafe_allow_html=True
+        )
+
+        if st.button(
+            "🔔  UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE",
+            type="primary",
+            use_container_width=True
+        ):
+            state["utolso_darab"] = True
+            state["elvalasztott_ceg"] = selected
+            state["index"] = selected_index
+
+            save_state(state)
+            st.rerun()
+
+
+# ==========================================
+# HÁTSÓ KEZELŐÁLLOMÁS
+# ==========================================
+
+def hatso_nezet():
+
+    state = load_state()
+
+    logo_megjelenites()
+    cim_megjelenites()
+
+    st.markdown(
+        '<div class="sub-title">HÁTSÓ KEZELŐÁLLOMÁS</div>',
+        unsafe_allow_html=True
+    )
+
+    if state["utolso_darab"]:
+
+        st.markdown(
+            '<div class="status-alert">⚠ ELVÁLASZTÓ ÉRKEZETT ⚠</div>',
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
+            '<div class="work-label">AKTUÁLIS PARTNER ÉS MUNKA</div>',
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
+            f'<div class="work-name">{state["elvalasztott_ceg"]}</div>',
+            unsafe_allow_html=True
+        )
+
+        # Hangjelzés
+        components.html("""
+            <audio autoplay loop>
+                <source
+                    src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
+                    type="audio/mpeg">
+            </audio>
+        """, height=0)
+
+        if st.button(
+            "✓  KIVÉVE / NYUGTÁZÁS",
+            type="primary",
+            use_container_width=True
+        ):
+            state["utolso_darab"] = False
+
+            save_state(state)
+            st.rerun()
+
+    else:
+        st.markdown(
+            '<div class="status-normal">🟢 NORMÁL MENETBEN</div>',
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
+            '<div class="work-label">JELENLEG NINCS AKTÍV RIASZTÁS</div>',
+            unsafe_allow_html=True
+        )
+
+
+# ==========================================
+# NÉZET KIVÁLASZTÁSA
+# ==========================================
+
+@st.fragment(run_every=1)
+def futo_nezet():
+
+    view = st.query_params.get("view", "elol")
+
+    if view == "hatul":
+        hatso_nezet()
+    else:
+        elso_nezet()
+
 
 futo_nezet()
