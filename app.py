@@ -516,30 +516,13 @@ def hatso_nezet():
         # Ha a böngésző blokkolja az automatikus lejátszást,
         # a lejátszás gombbal egyszer engedélyezhető.
 
-        components.html("""
-            <div style="
-                background:#202b35;
-                border-radius:12px;
-                padding:10px;
-                text-align:center;
-            ">
-                <div style="
-                    color:#f0bd55;
-                    font-size:14px;
-                    font-weight:bold;
-                    margin-bottom:8px;
-                ">
-                    🔊 RIASZTÁSI HANG
-                </div>
-
-                <audio autoplay loop controls style="width:100%;">
-                    <source
-                        src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
-                        type="audio/mpeg">
-                </audio>
-            </div>
-        """, height=90)
-
+   components.html("""
+    <audio autoplay loop>
+        <source
+            src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
+            type="audio/mpeg">
+    </audio>
+""", height=0)
         if st.button(
             "✓  KIVÉVE / NYUGTÁZÁS",
             type="primary",
