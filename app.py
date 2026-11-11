@@ -2,6 +2,7 @@
 import streamlit as st
 import json
 import os
+import html
 from pathlib import Path
 import streamlit.components.v1 as components
 
@@ -70,6 +71,8 @@ def alap_allapot():
     return {
         "index": 0,
         "utolso_darab": False,
+        "elvalasztott_ceg": "",
+        "riasztas_id": 0,
         "lista": DEFAULT_LISTA
     }
 
@@ -106,7 +109,6 @@ def load_state():
     except Exception:
         pass
 
-    # Az új partnerlista használata
     state["lista"] = DEFAULT_LISTA
 
     try:
@@ -123,11 +125,22 @@ def load_state():
         state.get("utolso_darab", False)
     )
 
+    state["elvalasztott_ceg"] = str(
+        state.get("elvalasztott_ceg", "")
+    )
+
+    try:
+        state["riasztas_id"] = int(
+            state.get("riasztas_id", 0)
+        )
+    except (ValueError, TypeError):
+        state["riasztas_id"] = 0
+
     return state
 
 
 # ==========================================
-# MODERN MEGJELENÉS
+# MEGJELENÉS
 # ==========================================
 
 st.markdown("""
@@ -159,13 +172,6 @@ footer,
     visibility: hidden;
 }
 
-h1, h2, h3 {
-    color: #f3f4f5 !important;
-    font-weight: 800 !important;
-}
-
-/* Főcím */
-
 .main-title {
     text-align: center;
     font-size: clamp(25px, 4vw, 38px);
@@ -184,7 +190,7 @@ h1, h2, h3 {
     margin-bottom: 30px;
 }
 
-/* Logó: az eddigi méret 60%-a */
+/* Logó 60%-os méretben */
 
 div[data-testid="stImage"] img {
     width: 60% !important;
@@ -194,7 +200,7 @@ div[data-testid="stImage"] img {
     margin-right: auto;
 }
 
-/* Normál állapot */
+/* Állapotjelzések */
 
 .status-normal {
     text-align: center;
@@ -205,27 +211,29 @@ div[data-testid="stImage"] img {
     letter-spacing: 1px;
 }
 
-/* Riasztás */
+.wait-message {
+    text-align: center;
+    color: #9bd9ad;
+    font-size: 17px;
+    font-weight: 700;
+    padding: 18px 5px;
+}
 
 .status-alert {
     text-align: center;
     color: #ff6262;
     font-size: clamp(25px, 5vw, 42px);
     font-weight: 900;
-    padding: 20px 5px;
+    padding: 15px 5px;
     animation: villogas 1s infinite;
 }
 
 @keyframes villogas {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.35;
-    }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
 }
 
-/* Aktuális munka */
+/* Munka neve */
 
 .work-label {
     text-align: center;
@@ -244,7 +252,7 @@ div[data-testid="stImage"] img {
     margin-bottom: 25px;
 }
 
-/* Legördülő menü felirata */
+/* Legördülő menü */
 
 div[data-testid="stSelectbox"] label {
     color: #f0bd55 !important;
@@ -252,8 +260,6 @@ div[data-testid="stSelectbox"] label {
     font-weight: 800 !important;
     margin-bottom: 10px !important;
 }
-
-/* Legördülő menü kerete */
 
 div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
     background: #263541 !important;
@@ -263,15 +269,11 @@ div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
     color: #ffffff !important;
 }
 
-/* Kiválasztott szöveg */
-
 div[data-testid="stSelectbox"] [data-baseweb="select"] span {
     color: #ffffff !important;
     font-size: 18px !important;
     font-weight: 700 !important;
 }
-
-/* Menü nyíl */
 
 div[data-testid="stSelectbox"] svg {
     fill: #f0bd55 !important;
@@ -316,7 +318,7 @@ div[data-testid="stSelectbox"] svg {
     border-color: #e0b65c;
 }
 
-/* Hátulsó riasztási keret */
+/* Külön elválasztó riasztási keret */
 
 .alert-box {
     background: #301d20;
@@ -328,12 +330,14 @@ div[data-testid="stSelectbox"] svg {
     box-shadow: 0 0 18px rgba(220, 65, 65, 0.16);
 }
 
-.wait-message {
-    text-align: center;
-    color: #9bd9ad;
-    font-size: 17px;
-    font-weight: 700;
-    padding: 18px 5px;
+.alert-box .work-label {
+    color: #ffaaaa;
+    margin-top: 0;
+}
+
+.alert-box .work-name {
+    color: #ffffff;
+    margin-bottom: 5px;
 }
 
 </style>
@@ -381,7 +385,9 @@ def elso_nezet():
         unsafe_allow_html=True
     )
 
-    # Elöl mindig csak a várakozási üzenet jelenik meg
+    # Elöl csak várakozási üzenet van,
+    # a piros riasztás kizárólag hátul jelenik meg.
+
     if state["utolso_darab"]:
         st.markdown(
             '<div class="wait-message">'
@@ -395,41 +401,53 @@ def elso_nezet():
             unsafe_allow_html=True
         )
 
-    # A kiválasztás riasztás alatt is szabadon módosítható
-
     st.markdown(
         '<div class="work-label">AKTUÁLIS MUNKA</div>',
         unsafe_allow_html=True
     )
 
+    # A választó értékét a böngésző munkamenete tárolja.
+    # Riasztás alatt is szabadon módosítható.
+
+    if "aktualis_selectbox" not in st.session_state:
+        st.session_state["aktualis_selectbox"] = DEFAULT_LISTA[
+            state["index"]
+        ]
+
     selected = st.selectbox(
         "Kérlek válassz!",
         DEFAULT_LISTA,
-        index=state["index"],
         key="aktualis_selectbox"
     )
 
     selected_index = DEFAULT_LISTA.index(selected)
 
-    # Minden választás azonnal mentésre kerül
+    # Az aktuális következő munka mentése.
+    # A már beküldött elválasztó adatait nem módosítjuk!
+
     if selected_index != state["index"]:
         state["index"] = selected_index
         save_state(state)
 
-    # Nagy, jól olvasható aktuális munkanév
     st.markdown(
-        f'<div class="work-name">{selected}</div>',
+        f'<div class="work-name">{html.escape(selected)}</div>',
         unsafe_allow_html=True
     )
 
     # Elválasztó beküldése
+
     if st.button(
         "🔔  UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE",
         type="primary",
         use_container_width=True
     ):
-        state["index"] = selected_index
+
+        # Külön pillanatfelvétel készül a beküldött munkáról.
+        # Ez későbbi választáskor sem változik meg.
+
+        state["elvalasztott_ceg"] = selected
         state["utolso_darab"] = True
+        state["riasztas_id"] = state.get("riasztas_id", 0) + 1
 
         save_state(state)
         st.rerun()
@@ -451,10 +469,23 @@ def hatso_nezet():
         unsafe_allow_html=True
     )
 
-    # Az aktuális munka mindig látható
+    # FELÜL: mindig a következő aktuális munka látható.
+
     aktualis_munka = DEFAULT_LISTA[state["index"]]
 
+    st.markdown(
+        '<div class="work-label">KÖVETKEZŐ AKTUÁLIS MUNKA</div>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        f'<div class="work-name">{html.escape(aktualis_munka)}</div>',
+        unsafe_allow_html=True
+    )
+
     if state["utolso_darab"]:
+
+        # ALUL: külön riasztás a korábban beküldött munkáról.
 
         st.markdown(
             '<div class="status-alert">'
@@ -463,36 +494,63 @@ def hatso_nezet():
             unsafe_allow_html=True
         )
 
-        # Riasztási keretben mindig az aktuális munka neve
+        bekuldott_munka = html.escape(
+            state["elvalasztott_ceg"]
+        )
+
         st.markdown(
             f"""
             <div class="alert-box">
                 <div class="work-label">
-                    ELVÁLASZTOTT PARTNER ÉS AKTUÁLIS MUNKA
+                    ELVÁLASZTÓ BEKÜLDVE
                 </div>
                 <div class="work-name">
-                    {aktualis_munka}
+                    {bekuldott_munka}
                 </div>
             </div>
             """,
             unsafe_allow_html=True
         )
 
-        # Hangjelzés
+        # Hangjelzés.
+        # Ha a böngésző blokkolja az automatikus lejátszást,
+        # a lejátszás gombbal egyszer engedélyezhető.
+
         components.html("""
-            <audio autoplay loop>
-                <source
-                    src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
-                    type="audio/mpeg">
-            </audio>
-        """, height=0)
+            <div style="
+                background:#202b35;
+                border-radius:12px;
+                padding:10px;
+                text-align:center;
+            ">
+                <div style="
+                    color:#f0bd55;
+                    font-size:14px;
+                    font-weight:bold;
+                    margin-bottom:8px;
+                ">
+                    🔊 RIASZTÁSI HANG
+                </div>
+
+                <audio autoplay loop controls style="width:100%;">
+                    <source
+                        src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
+                        type="audio/mpeg">
+                </audio>
+            </div>
+        """, height=90)
 
         if st.button(
             "✓  KIVÉVE / NYUGTÁZÁS",
             type="primary",
             use_container_width=True
         ):
+
+            # Csak a riasztást töröljük.
+            # A következő aktuális munka változatlan marad.
+
             state["utolso_darab"] = False
+            state["elvalasztott_ceg"] = ""
 
             save_state(state)
             st.rerun()
@@ -504,19 +562,9 @@ def hatso_nezet():
             unsafe_allow_html=True
         )
 
-        st.markdown(
-            '<div class="work-label">JELENLEGI AKTUÁLIS MUNKA</div>',
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            f'<div class="work-name">{aktualis_munka}</div>',
-            unsafe_allow_html=True
-        )
-
 
 # ==========================================
-# NÉZET ÉS AUTOMATIKUS FRISSÍTÉS
+# AUTOMATIKUS FRISSÍTÉS
 # ==========================================
 
 @st.fragment(run_every=1)
