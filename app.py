@@ -70,7 +70,6 @@ def alap_allapot():
     return {
         "index": 0,
         "utolso_darab": False,
-        "elvalasztott_ceg": "",
         "lista": DEFAULT_LISTA
     }
 
@@ -80,7 +79,12 @@ def save_state(state):
         temp_file = str(STATE_FILE) + ".tmp"
 
         with open(temp_file, "w", encoding="utf-8") as f:
-            json.dump(state, f, ensure_ascii=False, indent=4)
+            json.dump(
+                state,
+                f,
+                ensure_ascii=False,
+                indent=4
+            )
 
         os.replace(temp_file, STATE_FILE)
 
@@ -119,15 +123,11 @@ def load_state():
         state.get("utolso_darab", False)
     )
 
-    state["elvalasztott_ceg"] = str(
-        state.get("elvalasztott_ceg", "")
-    )
-
     return state
 
 
 # ==========================================
-# KÖZÖS MEGJELENÉS
+# MODERN MEGJELENÉS
 # ==========================================
 
 st.markdown("""
@@ -154,10 +154,7 @@ header[data-testid="stHeader"] {
     background: transparent;
 }
 
-footer {
-    visibility: hidden;
-}
-
+footer,
 #MainMenu {
     visibility: hidden;
 }
@@ -166,6 +163,8 @@ h1, h2, h3 {
     color: #f3f4f5 !important;
     font-weight: 800 !important;
 }
+
+/* Főcím */
 
 .main-title {
     text-align: center;
@@ -185,6 +184,18 @@ h1, h2, h3 {
     margin-bottom: 30px;
 }
 
+/* Logó: az eddigi méret 60%-a */
+
+div[data-testid="stImage"] img {
+    width: 60% !important;
+    height: auto !important;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Normál állapot */
+
 .status-normal {
     text-align: center;
     color: #8be0a8;
@@ -193,6 +204,8 @@ h1, h2, h3 {
     padding: 20px 5px;
     letter-spacing: 1px;
 }
+
+/* Riasztás */
 
 .status-alert {
     text-align: center;
@@ -212,6 +225,8 @@ h1, h2, h3 {
     }
 }
 
+/* Aktuális munka */
+
 .work-label {
     text-align: center;
     color: #aeb9c3;
@@ -229,18 +244,40 @@ h1, h2, h3 {
     margin-bottom: 25px;
 }
 
+/* Legördülő menü felirata */
+
 div[data-testid="stSelectbox"] label {
-    color: #c5cdd4 !important;
-    font-weight: 700;
+    color: #f0bd55 !important;
+    font-size: 18px !important;
+    font-weight: 800 !important;
+    margin-bottom: 10px !important;
 }
 
-div[data-testid="stSelectbox"] > div > div {
-    background: #202b35;
-    color: white;
-    border: 1px solid #46535f;
-    border-radius: 12px;
-    min-height: 55px;
+/* Legördülő menü kerete */
+
+div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+    background: #263541 !important;
+    border: 2px solid #d9ad50 !important;
+    border-radius: 13px !important;
+    min-height: 65px !important;
+    color: #ffffff !important;
 }
+
+/* Kiválasztott szöveg */
+
+div[data-testid="stSelectbox"] [data-baseweb="select"] span {
+    color: #ffffff !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+}
+
+/* Menü nyíl */
+
+div[data-testid="stSelectbox"] svg {
+    fill: #f0bd55 !important;
+}
+
+/* Gombok */
 
 .stButton > button {
     width: 100%;
@@ -279,8 +316,24 @@ div[data-testid="stSelectbox"] > div > div {
     border-color: #e0b65c;
 }
 
-div[data-testid="stAlert"] {
-    border-radius: 12px;
+/* Hátulsó riasztási keret */
+
+.alert-box {
+    background: #301d20;
+    border: 2px solid #d94c52;
+    border-radius: 16px;
+    padding: 22px 12px;
+    margin-top: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 18px rgba(220, 65, 65, 0.16);
+}
+
+.wait-message {
+    text-align: center;
+    color: #9bd9ad;
+    font-size: 17px;
+    font-weight: 700;
+    padding: 18px 5px;
 }
 
 </style>
@@ -292,11 +345,12 @@ div[data-testid="stAlert"] {
 # ==========================================
 
 def logo_megjelenites():
-    bal, kozep, jobb = st.columns([1, 2, 1])
+
+    bal, kozep, jobb = st.columns([1, 3, 1])
 
     with kozep:
         if LOGO_FILE.exists():
-            st.image(str(LOGO_FILE), use_container_width=True)
+            st.image(str(LOGO_FILE))
         else:
             st.markdown(
                 '<div class="main-title">VASALÓSOR</div>',
@@ -327,64 +381,58 @@ def elso_nezet():
         unsafe_allow_html=True
     )
 
+    # Elöl mindig csak a várakozási üzenet jelenik meg
     if state["utolso_darab"]:
         st.markdown(
-            '<div class="status-alert">⚠ ELVÁLASZTÓ SZÜKSÉGES ⚠</div>',
+            '<div class="wait-message">'
+            'A hátulsó kezelőállomás nyugtázására vár.'
+            '</div>',
             unsafe_allow_html=True
         )
-
-        st.markdown(
-            '<div class="work-label">ELVÁLASZTOTT PARTNER</div>',
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            f'<div class="work-name">{state["elvalasztott_ceg"]}</div>',
-            unsafe_allow_html=True
-        )
-
-        st.info("A hátulsó kezelőállomás nyugtázására vár.")
-
     else:
         st.markdown(
             '<div class="status-normal">🟢 NORMÁL MENETBEN</div>',
             unsafe_allow_html=True
         )
 
-        st.markdown(
-            '<div class="work-label">KÖVETKEZŐ MUNKA KIVÁLASZTÁSA</div>',
-            unsafe_allow_html=True
-        )
+    # A kiválasztás riasztás alatt is szabadon módosítható
 
-        selected = st.selectbox(
-            "Partner és munkatípus",
-            DEFAULT_LISTA,
-            index=state["index"],
-            key="aktualis_selectbox"
-        )
+    st.markdown(
+        '<div class="work-label">AKTUÁLIS MUNKA</div>',
+        unsafe_allow_html=True
+    )
 
-        selected_index = DEFAULT_LISTA.index(selected)
+    selected = st.selectbox(
+        "Kérlek válassz!",
+        DEFAULT_LISTA,
+        index=state["index"],
+        key="aktualis_selectbox"
+    )
 
-        if selected_index != state["index"]:
-            state["index"] = selected_index
-            save_state(state)
+    selected_index = DEFAULT_LISTA.index(selected)
 
-        st.markdown(
-            f'<div class="work-name">{selected}</div>',
-            unsafe_allow_html=True
-        )
+    # Minden választás azonnal mentésre kerül
+    if selected_index != state["index"]:
+        state["index"] = selected_index
+        save_state(state)
 
-        if st.button(
-            "🔔  UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE",
-            type="primary",
-            use_container_width=True
-        ):
-            state["utolso_darab"] = True
-            state["elvalasztott_ceg"] = selected
-            state["index"] = selected_index
+    # Nagy, jól olvasható aktuális munkanév
+    st.markdown(
+        f'<div class="work-name">{selected}</div>',
+        unsafe_allow_html=True
+    )
 
-            save_state(state)
-            st.rerun()
+    # Elválasztó beküldése
+    if st.button(
+        "🔔  UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE",
+        type="primary",
+        use_container_width=True
+    ):
+        state["index"] = selected_index
+        state["utolso_darab"] = True
+
+        save_state(state)
+        st.rerun()
 
 
 # ==========================================
@@ -403,20 +451,30 @@ def hatso_nezet():
         unsafe_allow_html=True
     )
 
+    # Az aktuális munka mindig látható
+    aktualis_munka = DEFAULT_LISTA[state["index"]]
+
     if state["utolso_darab"]:
 
         st.markdown(
-            '<div class="status-alert">⚠ ELVÁLASZTÓ ÉRKEZETT ⚠</div>',
+            '<div class="status-alert">'
+            '⚠ ELVÁLASZTÓ ÉRKEZETT ⚠'
+            '</div>',
             unsafe_allow_html=True
         )
 
+        # Riasztási keretben mindig az aktuális munka neve
         st.markdown(
-            '<div class="work-label">AKTUÁLIS PARTNER ÉS MUNKA</div>',
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            f'<div class="work-name">{state["elvalasztott_ceg"]}</div>',
+            f"""
+            <div class="alert-box">
+                <div class="work-label">
+                    ELVÁLASZTOTT PARTNER ÉS AKTUÁLIS MUNKA
+                </div>
+                <div class="work-name">
+                    {aktualis_munka}
+                </div>
+            </div>
+            """,
             unsafe_allow_html=True
         )
 
@@ -440,19 +498,25 @@ def hatso_nezet():
             st.rerun()
 
     else:
+
         st.markdown(
             '<div class="status-normal">🟢 NORMÁL MENETBEN</div>',
             unsafe_allow_html=True
         )
 
         st.markdown(
-            '<div class="work-label">JELENLEG NINCS AKTÍV RIASZTÁS</div>',
+            '<div class="work-label">JELENLEGI AKTUÁLIS MUNKA</div>',
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
+            f'<div class="work-name">{aktualis_munka}</div>',
             unsafe_allow_html=True
         )
 
 
 # ==========================================
-# NÉZET KIVÁLASZTÁSA
+# NÉZET ÉS AUTOMATIKUS FRISSÍTÉS
 # ==========================================
 
 @st.fragment(run_every=1)
