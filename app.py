@@ -385,8 +385,7 @@ def elso_nezet():
         unsafe_allow_html=True
     )
 
-    # Elöl csak várakozási üzenet van,
-    # a piros riasztás kizárólag hátul jelenik meg.
+    # Elöl csak várakozási üzenet van.
 
     if state["utolso_darab"]:
         st.markdown(
@@ -406,8 +405,7 @@ def elso_nezet():
         unsafe_allow_html=True
     )
 
-    # A választó értékét a böngésző munkamenete tárolja.
-    # Riasztás alatt is szabadon módosítható.
+    # A választó riasztás alatt is szabadon módosítható.
 
     if "aktualis_selectbox" not in st.session_state:
         st.session_state["aktualis_selectbox"] = DEFAULT_LISTA[
@@ -423,7 +421,6 @@ def elso_nezet():
     selected_index = DEFAULT_LISTA.index(selected)
 
     # Az aktuális következő munka mentése.
-    # A már beküldött elválasztó adatait nem módosítjuk!
 
     if selected_index != state["index"]:
         state["index"] = selected_index
@@ -441,9 +438,6 @@ def elso_nezet():
         type="primary",
         use_container_width=True
     ):
-
-        # Külön pillanatfelvétel készül a beküldött munkáról.
-        # Ez későbbi választáskor sem változik meg.
 
         state["elvalasztott_ceg"] = selected
         state["utolso_darab"] = True
@@ -485,7 +479,7 @@ def hatso_nezet():
 
     if state["utolso_darab"]:
 
-        # ALUL: külön riasztás a korábban beküldött munkáról.
+        # ALUL: külön riasztás a beküldött munkáról.
 
         st.markdown(
             '<div class="status-alert">'
@@ -512,17 +506,17 @@ def hatso_nezet():
             unsafe_allow_html=True
         )
 
-        # Hangjelzés.
-        # Ha a böngésző blokkolja az automatikus lejátszást,
-        # a lejátszás gombbal egyszer engedélyezhető.
+        # Automatikus, ismétlődő hangjelzés.
+        # Nincs látható lejátszó vagy Play gomb.
 
-   components.html("""
-    <audio autoplay loop>
-        <source
-            src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
-            type="audio/mpeg">
-    </audio>
-""", height=0)
+        components.html("""
+            <audio autoplay loop>
+                <source
+                    src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
+                    type="audio/mpeg">
+            </audio>
+        """, height=0)
+
         if st.button(
             "✓  KIVÉVE / NYUGTÁZÁS",
             type="primary",
@@ -530,7 +524,6 @@ def hatso_nezet():
         ):
 
             # Csak a riasztást töröljük.
-            # A következő aktuális munka változatlan marad.
 
             state["utolso_darab"] = False
             state["elvalasztott_ceg"] = ""
