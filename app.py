@@ -375,6 +375,57 @@ div[data-testid="stSelectbox"] svg {
 
 
 # ==========================================
+# BILLENTYŰZET LETILTÁSA A SELECTBOXNÁL
+# ==========================================
+
+components.html("""
+<script>
+(function () {
+    try {
+        const doc = window.parent.document;
+
+        function billentyuzetTiltas() {
+            const mezok = doc.querySelectorAll(
+                'div[data-testid="stSelectbox"] input'
+            );
+
+            mezok.forEach(function (mezo) {
+                if (!mezo.hasAttribute("readonly")) {
+                    mezo.setAttribute("readonly", "readonly");
+                }
+
+                mezo.setAttribute("inputmode", "none");
+                mezo.setAttribute("autocomplete", "off");
+                mezo.setAttribute("autocorrect", "off");
+                mezo.setAttribute("spellcheck", "false");
+            });
+        }
+
+        billentyuzetTiltas();
+
+        const observer = new MutationObserver(function () {
+            billentyuzetTiltas();
+        });
+
+        observer.observe(doc.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["readonly"]
+        });
+
+    } catch (error) {
+        console.warn(
+            "Billentyűzet tiltása nem sikerült:",
+            error
+        );
+    }
+})();
+</script>
+""", height=0)
+
+
+# ==========================================
 # KÖZÖS LOGÓ
 # ==========================================
 
@@ -613,9 +664,7 @@ components.html("""
                 });
 
                 parentDoc.addEventListener("fullscreenchange", function () {
-                    button.innerHTML = parentDoc.fullscreenElement
-                        ? "⛶"
-                        : "⛶";
+                    button.innerHTML = "⛶";
 
                     button.title = parentDoc.fullscreenElement
                         ? "Kilépés a teljes képernyőből"
