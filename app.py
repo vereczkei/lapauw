@@ -172,6 +172,46 @@ footer,
     visibility: hidden;
 }
 
+/* Álló tablet képernyő */
+
+html, body, .stApp {
+    min-height: 100%;
+}
+
+/* Görgetés engedélyezése érintőképernyőn */
+
+div[data-baseweb="popover"] {
+    max-height: 65vh !important;
+}
+
+div[data-baseweb="popover"] [role="listbox"],
+div[data-baseweb="menu"] {
+    max-height: 65vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
+    touch-action: pan-y !important;
+}
+
+div[data-baseweb="popover"] [role="option"],
+div[data-baseweb="menu"] [role="option"] {
+    touch-action: pan-y !important;
+    min-height: 48px !important;
+}
+
+/* Logó */
+
+div[data-testid="stImage"] img {
+    width: 60% !important;
+    height: auto !important;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Címek */
+
 .main-title {
     text-align: center;
     font-size: clamp(25px, 4vw, 38px);
@@ -188,16 +228,6 @@ footer,
     font-size: 13px;
     letter-spacing: 3px;
     margin-bottom: 30px;
-}
-
-/* Logó 60%-os méretben */
-
-div[data-testid="stImage"] img {
-    width: 60% !important;
-    height: auto !important;
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 /* Állapotjelzések */
@@ -318,7 +348,7 @@ div[data-testid="stSelectbox"] svg {
     border-color: #e0b65c;
 }
 
-/* Külön elválasztó riasztási keret */
+/* Riasztási keret */
 
 .alert-box {
     background: #301d20;
@@ -385,8 +415,6 @@ def elso_nezet():
         unsafe_allow_html=True
     )
 
-    # Elöl csak várakozási üzenet van.
-
     if state["utolso_darab"]:
         st.markdown(
             '<div class="wait-message">'
@@ -405,8 +433,6 @@ def elso_nezet():
         unsafe_allow_html=True
     )
 
-    # A választó riasztás alatt is szabadon módosítható.
-
     if "aktualis_selectbox" not in st.session_state:
         st.session_state["aktualis_selectbox"] = DEFAULT_LISTA[
             state["index"]
@@ -420,8 +446,6 @@ def elso_nezet():
 
     selected_index = DEFAULT_LISTA.index(selected)
 
-    # Az aktuális következő munka mentése.
-
     if selected_index != state["index"]:
         state["index"] = selected_index
         save_state(state)
@@ -430,8 +454,6 @@ def elso_nezet():
         f'<div class="work-name">{html.escape(selected)}</div>',
         unsafe_allow_html=True
     )
-
-    # Elválasztó beküldése
 
     if st.button(
         "🔔  UTOLSÓ DARAB / ELVÁLASZTÓ BEKÜLDVE",
@@ -463,8 +485,6 @@ def hatso_nezet():
         unsafe_allow_html=True
     )
 
-    # FELÜL: mindig a következő aktuális munka látható.
-
     aktualis_munka = DEFAULT_LISTA[state["index"]]
 
     st.markdown(
@@ -478,8 +498,6 @@ def hatso_nezet():
     )
 
     if state["utolso_darab"]:
-
-        # ALUL: külön riasztás a beküldött munkáról.
 
         st.markdown(
             '<div class="status-alert">'
@@ -507,7 +525,6 @@ def hatso_nezet():
         )
 
         # Automatikus, ismétlődő hangjelzés.
-        # Nincs látható lejátszó vagy Play gomb.
 
         components.html("""
             <audio autoplay loop>
@@ -523,8 +540,6 @@ def hatso_nezet():
             use_container_width=True
         ):
 
-            # Csak a riasztást töröljük.
-
             state["utolso_darab"] = False
             state["elvalasztott_ceg"] = ""
 
@@ -537,6 +552,86 @@ def hatso_nezet():
             '<div class="status-normal">🟢 NORMÁL MENETBEN</div>',
             unsafe_allow_html=True
         )
+
+
+# ==========================================
+# TELJES KÉPERNYŐ IKON
+# ==========================================
+
+components.html("""
+<script>
+(function () {
+    try {
+        const parentDoc = window.parent.document;
+        const parentWindow = window.parent;
+
+        function fullscreenGomb() {
+            let button = parentDoc.getElementById(
+                "vasalosor-fullscreen-button"
+            );
+
+            if (!button) {
+                button = parentDoc.createElement("button");
+                button.id = "vasalosor-fullscreen-button";
+                button.type = "button";
+                button.innerHTML = "⛶";
+                button.title = "Teljes képernyő be / ki";
+
+                button.style.cssText = `
+                    position: fixed;
+                    left: 12px;
+                    bottom: calc(12px + env(safe-area-inset-bottom));
+                    width: 42px;
+                    height: 42px;
+                    border-radius: 50%;
+                    border: 1px solid rgba(220,190,120,0.45);
+                    background: rgba(28,39,49,0.88);
+                    color: #e8bd62;
+                    font-size: 25px;
+                    line-height: 1;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 2147483647;
+                    cursor: pointer;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+                    -webkit-tap-highlight-color: transparent;
+                `;
+
+                parentDoc.body.appendChild(button);
+
+                button.addEventListener("click", async function () {
+                    try {
+                        if (!parentDoc.fullscreenElement) {
+                            await parentDoc.documentElement.requestFullscreen();
+                        } else {
+                            await parentDoc.exitFullscreen();
+                        }
+                    } catch (error) {
+                        console.warn("Fullscreen nem érhető el:", error);
+                    }
+                });
+
+                parentDoc.addEventListener("fullscreenchange", function () {
+                    button.innerHTML = parentDoc.fullscreenElement
+                        ? "⛶"
+                        : "⛶";
+
+                    button.title = parentDoc.fullscreenElement
+                        ? "Kilépés a teljes képernyőből"
+                        : "Teljes képernyő bekapcsolása";
+                });
+            }
+        }
+
+        fullscreenGomb();
+
+    } catch (error) {
+        console.warn("A teljes képernyős ikon nem telepíthető:", error);
+    }
+})();
+</script>
+""", height=0)
 
 
 # ==========================================
